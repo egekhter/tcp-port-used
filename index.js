@@ -125,12 +125,17 @@ function check(port, host) {
             deferred.resolve(inUse);
         }
         cleanUp();
+        clearTimeout(timer);
     }
 
     client = new net.Socket();
     client.once('connect', onConnectCb);
     client.once('error', onErrorCb);
     client.connect({port: opts.port, host: opts.host}, function() {});
+
+    var timer = setTimeout(function() {
+        client.emit('error', new Error('Connection could not be established'))
+    }, opts.timeOutMs);
 
     return deferred.promise;
 }
@@ -207,27 +212,27 @@ function waitForStatus(port, host, inUse, retryTimeMs, timeOutMs) {
 
     function doCheck() {
         check(opts.port, opts.host)
-        .then(function(inUse) {
-            if (timedout) {
-                return;
-            }
-            //debug('doCheck inUse: '+inUse);
-            //debug('doCheck opts.inUse: '+opts.inUse);
-            if (inUse === opts.inUse) {
-                deferred.resolve();
+            .then(function(inUse) {
+                if (timedout) {
+                    return;
+                }
+                //debug('doCheck inUse: '+inUse);
+                //debug('doCheck opts.inUse: '+opts.inUse);
+                if (inUse === opts.inUse) {
+                    deferred.resolve();
+                    cleanUp();
+                    return;
+                } else {
+                    retryId = setTimeout(function() { doCheck(); }, opts.retryTimeMs);
+                    return;
+                }
+            }, function(err) {
+                if (timedout) {
+                    return;
+                }
+                deferred.reject(err);
                 cleanUp();
-                return;
-            } else {
-                retryId = setTimeout(function() { doCheck(); }, opts.retryTimeMs);
-                return;
-            }
-        }, function(err) {
-            if (timedout) {
-                return;
-            }
-            deferred.reject(err);
-            cleanUp();
-        });
+            });
     }
 
     doCheck();
@@ -366,4 +371,3 @@ function waitUntilUsed(port, retryTimeMs, timeOutMs) {
 
     return waitUntilUsedOnHost(opts);
 }
-
