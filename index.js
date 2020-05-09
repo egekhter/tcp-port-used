@@ -134,7 +134,8 @@ function check(port, host) {
     client.connect({port: opts.port, host: opts.host}, function() {});
 
     var timer = setTimeout(function() {
-        client.emit('error', new Error('Connection could not be established'))
+        onErrorCb("connection could not be established");
+        // client.emit('error', new Error('Connection could not be established'))
     }, opts.timeOutMs);
 
     return deferred.promise;
